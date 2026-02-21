@@ -132,3 +132,9 @@ time-management/
     └── styles/
         └── styles.js        # 全局样式对象
 ```
+
+---
+
+## 开发日志
+
+详细的更改记录见 [development_record.md](./development_record.md)。
