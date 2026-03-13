@@ -1,11 +1,18 @@
 import { useState } from "react";
 import { getToday, formatDateFull } from "../../utils/dateUtils";
 import { PRIORITIES } from "../../constants/priorities";
+import { COLLECTION_TYPES } from "../../constants/collectionTypes";
 import { MiniTodoItem } from "../common/MiniTodoItem";
 import { Icons } from "../icons/Icons";
 import { styles } from "../../styles/styles";
 
-export function CalendarView({ todos, dailyNotes, setTodos }) {
+const COLLECTION_CALENDAR_META = {
+  projects: { label: "Research", short: "R" },
+  learning: { label: "Learning", short: "L" },
+  traveling: { label: "Travel", short: "T" },
+};
+
+export function CalendarView({ todos, dailyNotes, setTodos, projects = [], learning = [], traveling = [] }) {
   const [currentMonth, setCurrentMonth] = useState(() => {
     const now = new Date();
     return { year: now.getFullYear(), month: now.getMonth() };
@@ -20,6 +27,7 @@ export function CalendarView({ todos, dailyNotes, setTodos }) {
   );
 
   const navigateMonth = (delta) => {
+    setSelectedDate(null);
     setCurrentMonth((prev) => {
       let m = prev.month + delta;
       let y = prev.year;
@@ -32,6 +40,7 @@ export function CalendarView({ todos, dailyNotes, setTodos }) {
   const days = [];
   for (let i = 0; i < firstDayOfWeek; i++) days.push(null);
   for (let d = 1; d <= daysInMonth; d++) days.push(d);
+  while (days.length % 7 !== 0) days.push(null);
 
   const getDateStr = (day) => {
     if (!day) return "";
@@ -39,9 +48,14 @@ export function CalendarView({ todos, dailyNotes, setTodos }) {
   };
 
   const today = getToday();
+  const datedItems = [
+    ...projects.map((item) => ({ ...item, category: "projects" })),
+    ...learning.map((item) => ({ ...item, category: "learning" })),
+    ...traveling.map((item) => ({ ...item, category: "traveling" })),
+  ];
 
   return (
-    <div style={styles.viewContainer}>
+    <div style={{ ...styles.viewContainer, maxWidth: "1320px" }}>
       <div style={styles.viewHeader}>
         <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
           <button style={styles.iconBtn} onClick={() => navigateMonth(-1)}>
@@ -65,6 +79,16 @@ export function CalendarView({ todos, dailyNotes, setTodos }) {
             const hasNote = day && dailyNotes[dateStr];
             const isToday = dateStr === today;
             const isSelected = dateStr === selectedDate;
+            const dayItems = day
+              ? datedItems.filter((item) => {
+                  const start = item.startDate || "";
+                  const end = item.deadline || "";
+                  if (!start && !end) return false;
+                  if (start && end) return dateStr >= start && dateStr <= end;
+                  if (start) return dateStr >= start;
+                  return dateStr <= end;
+                })
+              : [];
 
             return (
               <div
@@ -75,7 +99,10 @@ export function CalendarView({ todos, dailyNotes, setTodos }) {
                   ...(isToday ? styles.calDayToday : {}),
                   ...(isSelected ? styles.calDaySelected : {}),
                 }}
-                onClick={() => day && setSelectedDate(dateStr)}
+                onClick={() => {
+                  if (!day) return;
+                  setSelectedDate((prev) => (prev === dateStr ? null : dateStr));
+                }}
               >
                 {day && (
                   <>
@@ -96,6 +123,25 @@ export function CalendarView({ todos, dailyNotes, setTodos }) {
                         <span style={{ ...styles.calDot, background: "#8b5cf6" }} />
                       )}
                     </div>
+                    {dayItems.map((item) => {
+                      return (
+                        <div
+                          key={`${item.category}-${item.id}`}
+                          style={styles.calItemTag}
+                          title={`${COLLECTION_CALENDAR_META[item.category]?.label || COLLECTION_TYPES[item.category]?.label}: ${item.name}`}
+                        >
+                          <span
+                            style={{
+                              ...styles.calItemCategory,
+                              background: item.color || "#1a1a2e",
+                            }}
+                          >
+                            {COLLECTION_CALENDAR_META[item.category]?.short || "?"}
+                          </span>
+                          <span style={styles.calItemName}>{item.name}</span>
+                        </div>
+                      );
+                    })}
                   </>
                 )}
               </div>
@@ -105,7 +151,12 @@ export function CalendarView({ todos, dailyNotes, setTodos }) {
 
         {selectedDate && (
           <div style={styles.calSidebar}>
-            <h3 style={styles.cardTitle}>{formatDateFull(selectedDate)}</h3>
+            <div style={styles.calSidebarHeader}>
+              <h3 style={styles.cardTitle}>{formatDateFull(selectedDate)}</h3>
+              <button style={styles.iconBtn} onClick={() => setSelectedDate(null)}>
+                ×
+              </button>
+            </div>
             <div style={{ marginTop: "12px" }}>
               <h4 style={styles.smallTitle}>Tasks</h4>
               {todos.filter((t) => t.dueDate === selectedDate).map((todo) => (
@@ -126,6 +177,41 @@ export function CalendarView({ todos, dailyNotes, setTodos }) {
                 )}
               </div>
             )}
+            {(() => {
+              const activeItems = datedItems.filter((item) => {
+                const start = item.startDate || "";
+                const end = item.deadline || "";
+                if (!start && !end) return false;
+                if (start && end) return selectedDate >= start && selectedDate <= end;
+                if (start) return selectedDate >= start;
+                return selectedDate <= end;
+              });
+              if (activeItems.length === 0) return null;
+              const groupedItems = ["projects", "learning", "traveling"]
+                .map((category) => ({
+                  category,
+                  items: activeItems.filter((item) => item.category === category),
+                }))
+                .filter((group) => group.items.length > 0);
+              return (
+                <div style={{ marginTop: "16px" }}>
+                  <h4 style={styles.smallTitle}>Collections</h4>
+                  {groupedItems.map((group) => (
+                    <div key={group.category} style={{ marginTop: "10px" }}>
+                      <div style={styles.calCollectionHeading}>
+                        {COLLECTION_CALENDAR_META[group.category]?.label || COLLECTION_TYPES[group.category]?.label}
+                      </div>
+                      {group.items.map((item) => (
+                        <div key={`${item.category}-${item.id}`} style={{ display: "flex", alignItems: "center", gap: "6px", padding: "4px 0" }}>
+                          <span style={{ ...styles.statusDot, background: item.color || "#1a1a2e" }} />
+                          <span style={{ fontSize: "12.5px", color: "#1a1a2e" }}>{item.name}</span>
+                        </div>
+                      ))}
+                    </div>
+                  ))}
+                </div>
+              );
+            })()}
           </div>
         )}
       </div>

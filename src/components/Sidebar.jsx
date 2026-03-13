@@ -9,6 +9,8 @@ export function Sidebar({ activeView, setActiveView, todoCount }) {
     { id: "weekly",   label: "Weekly Plan", icon: <Icons.Target /> },
     { id: "calendar", label: "Calendar",    icon: <Icons.Calendar /> },
     { id: "projects", label: "Projects",    icon: <Icons.Folder /> },
+    { id: "learning", label: "Learning",    icon: <Icons.Cap /> },
+    { id: "traveling", label: "Traveling",  icon: <Icons.Map /> },
   ];
 
   return (

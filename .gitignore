@@ -33,3 +33,6 @@ Thumbs.db
 # If using yarn: keep yarn.lock, add package-lock.json below
 # yarn.lock
 # package-lock.json
+
+# User data
+data/

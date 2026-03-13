@@ -48,3 +48,10 @@ export function formatDateFull(dateStr) {
     day: "numeric",
   });
 }
+
+export function getDaysUntil(dateStr, fromDateStr = getToday()) {
+  if (!dateStr) return null;
+  const target = new Date(`${dateStr}T00:00:00`);
+  const from = new Date(`${fromDateStr}T00:00:00`);
+  return Math.ceil((target - from) / 86400000);
+}

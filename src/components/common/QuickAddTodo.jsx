@@ -3,7 +3,7 @@ import { generateId } from "../../utils/idUtils";
 import { getToday } from "../../utils/dateUtils";
 import { styles } from "../../styles/styles";
 
-export function QuickAddTodo({ setTodos, defaultDate }) {
+export function QuickAddTodo({ setTodos, defaultDate, defaultCategory = "", defaultRelatedItem = "" }) {
   const [text, setText] = useState("");
 
   const handleAdd = () => {
@@ -16,7 +16,9 @@ export function QuickAddTodo({ setTodos, defaultDate }) {
         completed: false,
         priority: "medium",
         dueDate: defaultDate || "",
-        project: "",
+        category: defaultCategory,
+        relatedItem: defaultRelatedItem,
+        project: defaultCategory === "projects" ? defaultRelatedItem : "",
         createdDate: getToday(),
       },
     ]);

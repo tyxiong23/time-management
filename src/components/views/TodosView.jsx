@@ -1,16 +1,21 @@
-import { useState, useMemo } from "react";
+import { useMemo, useState } from "react";
 import { PRIORITIES } from "../../constants/priorities";
+import { COLLECTION_TYPES } from "../../constants/collectionTypes";
 import { generateId } from "../../utils/idUtils";
 import { getToday, formatDate } from "../../utils/dateUtils";
+import { getTodoLinkLabel, normalizeTodoLink } from "../../utils/collectionUtils";
 import { Icons } from "../icons/Icons";
 import { styles } from "../../styles/styles";
 
-// ---- TodoForm ----
-function TodoForm({ todo, projects, onSave, onCancel }) {
-  const [text, setText] = useState(todo?.text || "");
-  const [priority, setPriority] = useState(todo?.priority || "medium");
-  const [dueDate, setDueDate] = useState(todo?.dueDate || "");
-  const [project, setProject] = useState(todo?.project || "");
+function TodoForm({ todo, collections, onSave, onCancel }) {
+  const normalized = normalizeTodoLink(todo || {});
+  const [text, setText] = useState(normalized.text || "");
+  const [priority, setPriority] = useState(normalized.priority || "medium");
+  const [dueDate, setDueDate] = useState(normalized.dueDate || "");
+  const [category, setCategory] = useState(normalized.category || "");
+  const [relatedItem, setRelatedItem] = useState(normalized.relatedItem || "");
+
+  const relatedOptions = category ? collections[category] || [] : [];
 
   return (
     <div style={styles.card}>
@@ -27,9 +32,9 @@ function TodoForm({ todo, projects, onSave, onCancel }) {
           value={priority}
           onChange={(e) => setPriority(e.target.value)}
         >
-          {Object.entries(PRIORITIES).map(([k, v]) => (
-            <option key={k} value={k}>
-              {v.icon} {v.label}
+          {Object.entries(PRIORITIES).map(([key, value]) => (
+            <option key={key} value={key}>
+              {value.icon} {value.label}
             </option>
           ))}
         </select>
@@ -41,13 +46,29 @@ function TodoForm({ todo, projects, onSave, onCancel }) {
         />
         <select
           style={styles.formSelect}
-          value={project}
-          onChange={(e) => setProject(e.target.value)}
+          value={category}
+          onChange={(e) => {
+            setCategory(e.target.value);
+            setRelatedItem("");
+          }}
         >
-          <option value="">No Project</option>
-          {projects.map((p) => (
-            <option key={p.id} value={p.name}>
-              {p.name}
+          <option value="">No Category</option>
+          {Object.values(COLLECTION_TYPES).map((type) => (
+            <option key={type.id} value={type.id}>
+              {type.label}
+            </option>
+          ))}
+        </select>
+        <select
+          style={styles.formSelect}
+          value={relatedItem}
+          onChange={(e) => setRelatedItem(e.target.value)}
+          disabled={!category}
+        >
+          <option value="">{category ? "No linked item" : "Select category first"}</option>
+          {relatedOptions.map((item) => (
+            <option key={item.id} value={item.name}>
+              {item.name}
             </option>
           ))}
         </select>
@@ -61,12 +82,14 @@ function TodoForm({ todo, projects, onSave, onCancel }) {
           onClick={() =>
             text.trim() &&
             onSave({
-              ...todo,
-              text,
+              ...normalized,
+              text: text.trim(),
               priority,
               dueDate,
-              project,
-              completed: todo?.completed || false,
+              category,
+              relatedItem,
+              project: category === "projects" ? relatedItem : "",
+              completed: normalized.completed || false,
             })
           }
         >
@@ -77,21 +100,21 @@ function TodoForm({ todo, projects, onSave, onCancel }) {
   );
 }
 
-// ---- TodoItem ----
-function TodoItem({ todo, setTodos, projects, isEditing, setEditingId }) {
-  const p = PRIORITIES[todo.priority] || PRIORITIES.medium;
+function TodoItem({ todo, setTodos, collections, isEditing, setEditingId }) {
+  const normalized = normalizeTodoLink(todo);
+  const p = PRIORITIES[normalized.priority] || PRIORITIES.medium;
   const today = getToday();
-  const isOverdue = todo.dueDate && todo.dueDate < today && !todo.completed;
+  const isOverdue = normalized.dueDate && normalized.dueDate < today && !normalized.completed;
+  const linkLabel = getTodoLinkLabel(normalized);
+  const categoryLabel = normalized.category ? COLLECTION_TYPES[normalized.category]?.label : "";
 
   if (isEditing) {
     return (
       <TodoForm
-        todo={todo}
-        projects={projects}
+        todo={normalized}
+        collections={collections}
         onSave={(updated) => {
-          setTodos((prev) =>
-            prev.map((t) => (t.id === todo.id ? { ...t, ...updated } : t))
-          );
+          setTodos((prev) => prev.map((entry) => (entry.id === normalized.id ? { ...entry, ...updated } : entry)));
           setEditingId(null);
         }}
         onCancel={() => setEditingId(null)}
@@ -104,19 +127,17 @@ function TodoItem({ todo, setTodos, projects, isEditing, setEditingId }) {
       <button
         style={{
           ...styles.todoCheckbox,
-          borderColor: todo.completed ? "#10b981" : p.color,
-          background: todo.completed ? "#10b981" : "transparent",
-          color: todo.completed ? "#fff" : "transparent",
+          borderColor: normalized.completed ? "#10b981" : p.color,
+          background: normalized.completed ? "#10b981" : "transparent",
+          color: normalized.completed ? "#fff" : "transparent",
         }}
         onClick={() =>
-          setTodos((prev) =>
-            prev.map((t) =>
-              t.id === todo.id ? { ...t, completed: !t.completed } : t
-            )
-          )
+          setTodos((prev) => prev.map((entry) =>
+            entry.id === normalized.id ? { ...entry, completed: !normalized.completed } : entry
+          ))
         }
       >
-        {todo.completed && <Icons.Check />}
+        {normalized.completed && <Icons.Check />}
       </button>
 
       <div style={{ flex: 1, minWidth: 0 }}>
@@ -124,32 +145,32 @@ function TodoItem({ todo, setTodos, projects, isEditing, setEditingId }) {
           style={{
             fontSize: "14px",
             fontWeight: 500,
-            textDecoration: todo.completed ? "line-through" : "none",
-            opacity: todo.completed ? 0.5 : 1,
+            textDecoration: normalized.completed ? "line-through" : "none",
+            opacity: normalized.completed ? 0.5 : 1,
             color: "#1a1a2e",
           }}
         >
-          {todo.text}
+          {normalized.text}
         </div>
         <div style={styles.todoMeta}>
-          {todo.dueDate && (
+          {normalized.dueDate && (
             <span style={{ ...styles.todoDue, color: isOverdue ? "#ef4444" : "#6b7280" }}>
-              <Icons.Clock /> {formatDate(todo.dueDate)}
+              <Icons.Clock /> {formatDate(normalized.dueDate)}
             </span>
           )}
-          {todo.project && <span style={styles.todoTag}>{todo.project}</span>}
+          {linkLabel && (
+            <span style={styles.todoTag}>{categoryLabel ? `${categoryLabel}: ${linkLabel}` : linkLabel}</span>
+          )}
         </div>
       </div>
 
       <div style={styles.todoActions}>
-        <button style={styles.iconBtn} onClick={() => setEditingId(todo.id)}>
+        <button style={styles.iconBtn} onClick={() => setEditingId(normalized.id)}>
           <Icons.Edit />
         </button>
         <button
           style={styles.iconBtn}
-          onClick={() =>
-            setTodos((prev) => prev.filter((t) => t.id !== todo.id))
-          }
+          onClick={() => setTodos((prev) => prev.filter((entry) => entry.id !== normalized.id))}
         >
           <Icons.Trash />
         </button>
@@ -158,19 +179,21 @@ function TodoItem({ todo, setTodos, projects, isEditing, setEditingId }) {
   );
 }
 
-// ---- TodosView ----
-export function TodosView({ todos, setTodos, projects }) {
+export function TodosView({ todos, setTodos, projects, learning, traveling }) {
   const [filter, setFilter] = useState("active");
   const [showAddForm, setShowAddForm] = useState(false);
   const [editingId, setEditingId] = useState(null);
+  const collections = { projects, learning, traveling };
 
   const filtered = useMemo(() => {
-    let list = [...todos];
-    if (filter === "active") list = list.filter((t) => !t.completed);
-    else if (filter === "completed") list = list.filter((t) => t.completed);
+    let list = todos.map(normalizeTodoLink);
+    if (filter === "active") list = list.filter((todo) => !todo.completed);
+    else if (filter === "completed") list = list.filter((todo) => todo.completed);
     list.sort((a, b) => {
-      const po = { urgent: 0, high: 1, medium: 2, low: 3 };
-      if (po[a.priority] !== po[b.priority]) return po[a.priority] - po[b.priority];
+      const priorityOrder = { urgent: 0, high: 1, medium: 2, low: 3 };
+      if (priorityOrder[a.priority] !== priorityOrder[b.priority]) {
+        return priorityOrder[a.priority] - priorityOrder[b.priority];
+      }
       if (a.dueDate && b.dueDate) return a.dueDate.localeCompare(b.dueDate);
       if (a.dueDate) return -1;
       if (b.dueDate) return 1;
@@ -189,14 +212,14 @@ export function TodosView({ todos, setTodos, projects }) {
           </button>
         </div>
         <div style={styles.filterBar}>
-          {["all", "active", "completed"].map((f) => (
+          {["all", "active", "completed"].map((entry) => (
             <button
-              key={f}
-              onClick={() => setFilter(f)}
-              style={{ ...styles.filterBtn, ...(filter === f ? styles.filterBtnActive : {}) }}
+              key={entry}
+              onClick={() => setFilter(entry)}
+              style={{ ...styles.filterBtn, ...(filter === entry ? styles.filterBtnActive : {}) }}
             >
-              {f.charAt(0).toUpperCase() + f.slice(1)}
-              {f === "active" && ` (${todos.filter((t) => !t.completed).length})`}
+              {entry.charAt(0).toUpperCase() + entry.slice(1)}
+              {entry === "active" && ` (${todos.filter((todo) => !todo.completed).length})`}
             </button>
           ))}
         </div>
@@ -204,12 +227,9 @@ export function TodosView({ todos, setTodos, projects }) {
 
       {showAddForm && (
         <TodoForm
-          projects={projects}
+          collections={collections}
           onSave={(todo) => {
-            setTodos((prev) => [
-              ...prev,
-              { ...todo, id: generateId(), createdDate: getToday() },
-            ]);
+            setTodos((prev) => [...prev, { ...todo, id: generateId(), createdDate: getToday() }]);
             setShowAddForm(false);
           }}
           onCancel={() => setShowAddForm(false)}
@@ -222,7 +242,7 @@ export function TodosView({ todos, setTodos, projects }) {
             key={todo.id}
             todo={todo}
             setTodos={setTodos}
-            projects={projects}
+            collections={collections}
             isEditing={editingId === todo.id}
             setEditingId={setEditingId}
           />

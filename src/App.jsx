@@ -6,7 +6,8 @@ import { TodayView } from "./components/views/TodayView";
 import { TodosView } from "./components/views/TodosView";
 import { WeeklyPlanView } from "./components/views/WeeklyView";
 import { CalendarView } from "./components/views/CalendarView";
-import { ProjectsView } from "./components/views/ProjectsView";
+import { LearningView, ProjectsView, TravelingView } from "./components/views/ProjectsView";
+import { normalizeTodoLink } from "./utils/collectionUtils";
 import { styles } from "./styles/styles";
 
 export default function App() {
@@ -15,8 +16,12 @@ export default function App() {
   const [dailyNotes, setDailyNotes]   = usePersistedState(STORAGE_KEYS.dailyNotes,  {});
   const [weeklyPlans, setWeeklyPlans] = usePersistedState(STORAGE_KEYS.weeklyPlans, {});
   const [projects, setProjects]       = usePersistedState(STORAGE_KEYS.projects,    []);
+  const [learning, setLearning]       = usePersistedState(STORAGE_KEYS.learning,    []);
+  const [traveling, setTraveling]     = usePersistedState(STORAGE_KEYS.traveling,   []);
 
-  const activeTodoCount = todos.filter((t) => !t.completed).length;
+  const normalizedTodos = todos.map(normalizeTodoLink);
+
+  const activeTodoCount = normalizedTodos.filter((t) => !t.completed).length;
 
   const renderView = () => {
     switch (activeView) {
@@ -25,16 +30,18 @@ export default function App() {
           <TodayView
             dailyNotes={dailyNotes}
             setDailyNotes={setDailyNotes}
-            todos={todos}
+            todos={normalizedTodos}
             setTodos={setTodos}
           />
         );
       case "todos":
         return (
           <TodosView
-            todos={todos}
+            todos={normalizedTodos}
             setTodos={setTodos}
             projects={projects}
+            learning={learning}
+            traveling={traveling}
           />
         );
       case "weekly":
@@ -42,16 +49,19 @@ export default function App() {
           <WeeklyPlanView
             weeklyPlans={weeklyPlans}
             setWeeklyPlans={setWeeklyPlans}
-            todos={todos}
+            todos={normalizedTodos}
             setTodos={setTodos}
           />
         );
       case "calendar":
         return (
           <CalendarView
-            todos={todos}
+            todos={normalizedTodos}
             dailyNotes={dailyNotes}
             setTodos={setTodos}
+            projects={projects}
+            learning={learning}
+            traveling={traveling}
           />
         );
       case "projects":
@@ -59,7 +69,25 @@ export default function App() {
           <ProjectsView
             projects={projects}
             setProjects={setProjects}
-            todos={todos}
+            todos={normalizedTodos}
+            setTodos={setTodos}
+          />
+        );
+      case "learning":
+        return (
+          <LearningView
+            items={learning}
+            setItems={setLearning}
+            todos={normalizedTodos}
+            setTodos={setTodos}
+          />
+        );
+      case "traveling":
+        return (
+          <TravelingView
+            items={traveling}
+            setItems={setTraveling}
+            todos={normalizedTodos}
             setTodos={setTodos}
           />
         );

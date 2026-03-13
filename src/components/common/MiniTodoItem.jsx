@@ -1,9 +1,13 @@
 import { PRIORITIES } from "../../constants/priorities";
+import { COLLECTION_TYPES } from "../../constants/collectionTypes";
+import { getTodoLinkLabel } from "../../utils/collectionUtils";
 import { Icons } from "../icons/Icons";
 import { styles } from "../../styles/styles";
 
 export function MiniTodoItem({ todo, setTodos }) {
   const p = PRIORITIES[todo.priority] || PRIORITIES.medium;
+  const categoryLabel = todo.category ? COLLECTION_TYPES[todo.category]?.label : "";
+  const linkLabel = getTodoLinkLabel(todo);
 
   return (
     <div style={styles.miniTodo}>
@@ -27,7 +31,7 @@ export function MiniTodoItem({ todo, setTodos }) {
         >
           {todo.text}
         </div>
-        {todo.project && <span style={styles.todoTag}>{todo.project}</span>}
+        {linkLabel && <span style={styles.todoTag}>{categoryLabel ? `${categoryLabel}: ${linkLabel}` : linkLabel}</span>}
       </div>
       <span style={{ ...styles.priorityDot, background: p.color }} title={p.label} />
     </div>

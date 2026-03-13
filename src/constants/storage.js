@@ -4,4 +4,6 @@ export const STORAGE_KEYS = {
   weeklyNotes: "labflow-weekly",
   weeklyPlans: "labflow-weeklyplans",
   projects: "labflow-projects",
+  learning: "labflow-learning",
+  traveling: "labflow-traveling",
 };
